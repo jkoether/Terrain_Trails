@@ -37,13 +37,13 @@ OpenSCAD is also required, exe loacation is assumed to be: "C:\"Program Files\Op
 
 In general to make a print you need to define a polygon using coordinates for the print area. you can also use a gpx file to input the area, I use caltopo to create these: caltopo.com > +Add > polygon > [draw polygon] > export.
 
-I made this with a focus on trails so it will import all footpaths within the selected area, so you will need to exlude paths by name or OSM id.  Use the openstreetmap.org "query features" tool to get the ids for the paths to exclude.  Roads, waterways and waterbodies have to be explicitly included.
+I made this with a focus on trails so it will import all footpaths within the selected area, so you will need to exlude paths by name or OSM id.  Use the openstreetmap.org "query features" tool to get the ids for the paths to exclude.  Roads, waterways and waterbodies have to be explicitly included.  It's up to you how many roads you want to inlcde.
 
 This is currently only able to pull from downloaded elevation data.  I have found that 10m data can be easily downloaded from: https://apps.nationalmap.gov/tnmaccess/products.html.
 
-The 30m data is easier to find but I have found the quality of the 10m data to be much better, and not just because of the resolution.
+The 30m data is easier to find but I have found the quality of the 10m (1/3 arcsecond) data to be much better and not just because of the resolution, it is just more accurate and less noisy.
 
-See the included example for North Park (pittsburgh area): NP_STL.py, NP.gpX, tiff files downloaded by searching bounding box="-80.034,40.577,-79.974,40.6222", NED 1/3 arc-second, GeoTIFF.
+See the included example for North Park (pittsburgh area): NP_STL.py, NP.gpx, tiff files downloaded by searching bounding box="-80.034,40.577,-79.974,40.6222", NED 1/3 arc-second, GeoTIFF.
 
 
 
