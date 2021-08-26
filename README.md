@@ -67,4 +67,4 @@ See the included example for North Park (pittsburgh area): NP_STL.py, NP.gpx, ti
 * resolution - 10 or 30, for 10/30 meter resolution DEM.
 * dem_offset - offset DEM relative to OSM data to account for shifts in data
 * downsample_factor - integer factor to reduce resolution of terrain surface, needed for larger models.  1mm resolution is reasonable minimum.
-* map_only - stop after generating map to review (no boolean ops), recomend to do this first until all desired features look corrects oi it doesn't get hung up on boolean operations for hours.
+* map_only - stop after generating map to review (no boolean ops), recomend to do this first until all desired features look correct so it doesn't get hung up on the boolean operations for hours.
