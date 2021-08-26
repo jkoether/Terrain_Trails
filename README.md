@@ -23,12 +23,12 @@ Future options I would like to include are:
 * Adjust base height each path section based on minimum elevation.  This would reduce priting time and reduce the number of tall skinny path prints that are prone to failing.
 
 The following libraries are used:
-overpy
-numpy trimesh as tm
-import pyclipper
-triangle
-gpxpy
-rasterio
+* overpy
+* numpy trimesh as tm
+* import pyclipper
+* triangle
+* gpxpy
+* rasterio
 
 OpenSCAD is also required, exe loacation is assumed to be: "C:\"Program Files\OpenSCAD\openscad.com"
 
