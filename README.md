@@ -50,10 +50,10 @@ See the included example for North Park: NP_STL.py, NP.gpX, tiff files downloade
 
 # INPUTS:
 
-CoordPoly - polygon to define shape of terrain, input as longitude/lattitude array, or gpx file of points
-rd_include - roads names / ids to inlcude, no roads included by default.
-trail_exclude - footpath names / ids to inlcude, all included by default.
-waterway_include - water paths to inlcude, not inlcuding polygon water bodies
+ CoordPoly - polygon to define shape of terrain, input as longitude/lattitude array, or gpx file of points
+ rd_include - roads names / ids to inlcude, no roads included by default.
+ trail_exclude - footpath names / ids to inlcude, all included by default.
+ waterway_include - water paths to inlcude, not inlcuding polygon water bodies
 waterbody - waterbody polygons (lakes, ponds) rivers will work in threory but the code is not set up to allow for any slope on waterbodies.
 path_width - path (road, footpaths and waterway) print top width, 3 total passes works best.
 support_width - width of base (shoot for one pass less than path_width)
