@@ -50,21 +50,21 @@ See the included example for North Park: NP_STL.py, NP.gpX, tiff files downloade
 
 # INPUTS:
 
- CoordPoly - polygon to define shape of terrain, input as longitude/lattitude array, or gpx file of points
- rd_include - roads names / ids to inlcude, no roads included by default.
- trail_exclude - footpath names / ids to inlcude, all included by default.
- waterway_include - water paths to inlcude, not inlcuding polygon water bodies
-waterbody - waterbody polygons (lakes, ponds) rivers will work in threory but the code is not set up to allow for any slope on waterbodies.
-path_width - path (road, footpaths and waterway) print top width, 3 total passes works best.
-support_width - width of base (shoot for one pass less than path_width)
-path_clearance - clearance between path prints (tops) and cutouts.
-height_factor - exaggeration factor for elevation. 1.0 makes on same scale as horizontal dimensions. 2-3 is reasonable factor.
-base_height - minium print thickness
-edge_width - width of terrian border with no path cutouts
-max_print_size - maximum print dimension.  will scale and rotate print to fit this.
-water_drop - water ways printed slightly lower than other paths and terrain
-load_area - overide automatic area selection
-resolution - 10 or 30, for 10/30 meter resolution DEM.
-dem_offset - offset DEM relative to OSM data to account for shifts in data
-downsample_factor - integer factor to reduce resolution of terrain surface, needed for larger models.  1mm resolution is reasonable minimum.
-map_only - stop after generating map to review (no boolean ops), recomend to do this first until all desired features look corrects oi it doesn't get hung up on boolean operations for hours.
+* CoordPoly - polygon to define shape of terrain, input as longitude/lattitude array, or gpx file of points
+* rd_include - roads names / ids to inlcude, no roads included by default.
+* trail_exclude - footpath names / ids to inlcude, all included by default.
+* waterway_include - water paths to inlcude, not inlcuding polygon water bodies
+* waterbody - waterbody polygons (lakes, ponds) rivers will work in threory but the code is not set up to allow for any slope on waterbodies.
+* path_width - path (road, footpaths and waterway) print top width, 3 total passes works best.
+* support_width - width of base (shoot for one pass less than path_width)
+* path_clearance - clearance between path prints (tops) and cutouts.
+* height_factor - exaggeration factor for elevation. 1.0 makes on same scale as horizontal dimensions. 2-3 is reasonable factor.
+* base_height - minium print thickness
+* edge_width - width of terrian border with no path cutouts
+* max_print_size - maximum print dimension.  will scale and rotate print to fit this.
+* water_drop - water ways printed slightly lower than other paths and terrain
+* load_area - overide automatic area selection
+* resolution - 10 or 30, for 10/30 meter resolution DEM.
+* dem_offset - offset DEM relative to OSM data to account for shifts in data
+* downsample_factor - integer factor to reduce resolution of terrain surface, needed for larger models.  1mm resolution is reasonable minimum.
+* map_only - stop after generating map to review (no boolean ops), recomend to do this first until all desired features look corrects oi it doesn't get hung up on boolean operations for hours.
