@@ -1,4 +1,4 @@
-#BACKGROUND
+# BACKGROUND
 This has been an ongoing project of mine for a few months now.  I run trails a lot and original the goal was to create a function to combine trail data from Openstreetmap and geospatial data to create a 3D printable terrain model with the path features as seperate integrated prints. The terrain data is downloaded from USGS (10 or 30m 3DEP data), overpass (overpy) is used for the OSM queries, and OpensSCAD is used for all the boolean operations with a collection of Python functions to do all the processing.  The hardest part was creating a function to inflate (widen) the trail lines to a polygon that could be extruded and meshed.  There are several python libraries that do line/plolygon inflation, but none that really worked for an arbitray network of intersecting and deadend lines so I had start from scratch.  Going into this I knew almost no Python so this has been a learning experience.
 
 The "inflator" function can take almost any complex set of multiple intersecting and/or seperate polylines and inflate to a specified width, handling any resulting overlap, and removing interior polygons that get too small or thin. This is then 2D meshed using a Delaunay triangulation (Triangle library) and extruded to a 3D watertight mesh using pymesh.  The intersection of this mesh and the terrain mesh is used so the top surface mataches the terrain exactly once inserted.  OpenSCAD seems very slow (several hours with 10m DEM) for boolean operations, but it does finish eventually and it does exactly what I want.
@@ -33,7 +33,7 @@ rasterio
 OpenSCAD is also required, exe loacation is assumed to be: "C:\"Program Files\OpenSCAD\openscad.com"
 
 
-#USAGE:
+# USAGE:
 
 In general to make a print you need to define a polygon using coordinates for the print area. you can also use a gpx file to input the area, I use caltopo to create these: caltopo.com > +Add > polygon > [draw polygon] > export.
 
@@ -48,7 +48,7 @@ See the included example for North Park. (NP_STL.py, NP.gpX and the two .tif fil
 
 
 
-#INPUTS:
+# INPUTS:
 
     CoordPoly - polygon to define shape of terrain, input as longitude/lattitude array, or gpx file of points
     rd_include - roads names / ids to inlcude, no roads included by default.
