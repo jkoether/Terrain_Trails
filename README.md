@@ -8,6 +8,7 @@ An input script is needed for a given area to define your printer size, bounding
 
 It's not quite plug and play but you should be able to get working for any area you want with a little work.  The great thing about OSM is that it is user maintained so you can add the trails you need and do any required clean-up on what is there.
 
+
 This is currently only able to pull from downloaded elevation data.  I have found that 10m data can be easily downloaded from:
 https://apps.nationalmap.gov/tnmaccess/products.html 
 The current script is set up to read the geotiff files using that search.
