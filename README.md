@@ -43,7 +43,7 @@ This is currently only able to pull from downloaded elevation data.  I have foun
 
 The 30m data is easier to find but I have found the quality of the 10m data to be much better, and not just because of the resolution.
 
-See the included example for North Park: NP_STL.py, NP.gpX, tiff files downloaded by searching bounding box="-80.034,40.577,-79.974,40.6222", NED 1/3 arc-second, GeoTIFF.
+See the included example for North Park (pittsburgh area): NP_STL.py, NP.gpX, tiff files downloaded by searching bounding box="-80.034,40.577,-79.974,40.6222", NED 1/3 arc-second, GeoTIFF.
 
 
 
