@@ -14,10 +14,10 @@ https://apps.nationalmap.gov/tnmaccess/products.html
 The current script is set up to read the geotiff files using that search.
 
 Future options I would like to include are:
-*Automatic sectioning and dovetailing for terrain prints larger than printbed
-*Seprate groups of trails for different colored trails. (can be done with slicer...)
-*Additional printed path from GPX file.
-*Integrated compass for terrain model.
-*Guidance for material changes at specific layers heights to generate contour lines on terrain model.
-*Adjust base height each path section based on minimum elevation.  This would reduce priting time and reduce the number of tall skinny path prints that are prone to failing.
+* Automatic sectioning and dovetailing for terrain prints larger than printbed
+* Seprate groups of trails for different colored trails. (can be done with slicer...)
+* Additional printed path from GPX file.
+* Integrated compass for terrain model.
+* Guidance for material changes at specific layers heights to generate contour lines on terrain model.
+* Adjust base height each path section based on minimum elevation.  This would reduce priting time and reduce the number of tall skinny path prints that are prone to failing.
 
