@@ -45,6 +45,7 @@ The 30m data is easier to find but I have found the quality of the 10m (1/3 arcs
 
 See the included example for North Park (pittsburgh area): NP_STL.py, NP.gpx, tiff files downloaded by searching bounding box="-80.034,40.577,-79.974,40.6222", NED 1/3 arc-second, GeoTIFF.
 
+Final assembly can be a little tricky. You do want to clean off any fuzzies, and maybe cut really big path sections into several pieces.  Don't force them in too hard or they will get stuck partially inserted. A little sanding in the cutouts and on the side of the paths really helps the process.
 
 
 
