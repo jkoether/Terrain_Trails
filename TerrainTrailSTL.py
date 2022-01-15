@@ -937,6 +937,10 @@ def GenerateSTLs(Boundary,rd_include=[],trail_exclude=[],waterway_include=[],wat
     downsample_factor, integer factor to reduce resolution of terrain surface, needed for larger models.  1mm resolution is reasonable minimum.
     map_only - stop after generating map to review (no boolean ops), recomend to do this first until all desired features look corrects oi it doesn't get hung up on boolean operations for hours.
     """
+    if not os.path.isdir('print_files/'):
+        os.mkdir('print_files/')
+    if not os.path.isdir('temp/'):
+        os.mkdir('temp/')
     # clear temp files
     fileList = glob.glob('temp/*.stl')
     # Iterate over the list of filepaths & remove each file.
