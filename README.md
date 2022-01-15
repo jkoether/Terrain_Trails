@@ -17,20 +17,19 @@ The current script is set up to read the geotiff files using that search.
 Future options I would like to include are:
 * Automatic sectioning and dovetailing for terrain prints larger than printbed
 * Seprate groups of trails for different colored trails. (can be done with slicer...)
-* Additional printed path from GPX file.
 * Integrated compass for terrain model.
 * Guidance for material changes at specific layers heights to generate contour lines on terrain model.
 * Adjust base height each path section based on minimum elevation.  This would reduce priting time and reduce the number of tall skinny path prints that are prone to failing.
 
 The following libraries are used:
 * overpy
+* Shapely
 * numpy trimesh as tm
-* import pyclipper
 * triangle
 * gpxpy
 * rasterio
 
-OpenSCAD is also required, exe loacation is assumed to be: "C:\"Program Files\OpenSCAD\openscad.com"
+Blender is also required, exe loacation is assumed to be: "C:\Program Files\Blender Foundation\Blender 3.0\blender.exe
 
 
 # USAGE:
@@ -51,7 +50,7 @@ Final assembly can be a little tricky. You do want to clean off any fuzzies, and
 
 # INPUTS:
 
-* CoordPoly - polygon to define shape of terrain, input as longitude/lattitude array, or gpx file of points
+* Boundary - polygon to define shape of terrain, input as longitude/lattitude array, or gpx file of points
 * rd_include - roads names / ids to inlcude, no roads included by default.
 * trail_exclude - footpath names / ids to inlcude, all included by default.
 * waterway_include - water paths to inlcude, not inlcuding polygon water bodies
@@ -61,6 +60,7 @@ Final assembly can be a little tricky. You do want to clean off any fuzzies, and
 * path_clearance - clearance between path prints (tops) and cutouts.
 * height_factor - exaggeration factor for elevation. 1.0 makes on same scale as horizontal dimensions. 2-3 is reasonable factor.
 * base_height - minium print thickness
+* trail_gpx - gpx file to use for trail path
 * edge_width - width of terrian border with no path cutouts
 * max_print_size - maximum print dimension.  will scale and rotate print to fit this.
 * water_drop - water ways printed slightly lower than other paths and terrain
@@ -68,4 +68,8 @@ Final assembly can be a little tricky. You do want to clean off any fuzzies, and
 * resolution - 10 or 30, for 10/30 meter resolution DEM.
 * dem_offset - offset DEM relative to OSM data to account for shifts in data
 * downsample_factor - integer factor to reduce resolution of terrain surface, needed for larger models.  1mm resolution is reasonable minimum.
-* map_only - stop after generating map to review (no boolean ops), recomend to do this first until all desired features look correct so it doesn't get hung up on the boolean operations for hours.
+* map_only - stop after generating map to review (no boolean ops), recomend to do this first until all desired features look correct so you can iterate through changes in your input deck quicker
+
+
+# January 2022 Updates:
+The function has been significantly updated to streamline the path creation and boolean ops and is more flexible.  All of the path lines are now inflated using shapely, with a lot of boolean operation done using shapely polygons rather than the 3D meshes.  The function will now process inputs with no roads, waterways or waterbodies, and footpath can be input as a gpx file in which case no footpaths are read from OSM.  Mesh boolean ops are all performed in Blender now, and with the other changes the function usually runs in a few minutes, rather than hours.  The paths now include some smoothing and the buffer function is used to elimintate sections that are too small or thin to print, although there is still some room for improvement here.
