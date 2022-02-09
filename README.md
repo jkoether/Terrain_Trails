@@ -33,7 +33,7 @@ In general to make a print you need to define a polygon using coordinates for th
 
 I made this with a focus on trails so it will import all footpaths within the selected area, so you will need to exlude paths by name or OSM id.  Use the openstreetmap.org "query features" tool to get the ids for the paths to exclude.  Roads, waterways and waterbodies have to be explicitly included.  It's up to you how many roads you want to inlcde.
 
-This is currently only able to pull from downloaded elevation data.  I have found that 10m data can be easily downloaded from: https://apps.nationalmap.gov/tnmaccess/products.html.
+This is currently only able to pull from downloaded elevation data.  I have found that 10m data can be easily downloaded from: https://apps.nationalmap.gov/tnmaccess/#/product.
 
 The 30m data is easier to find but I have found the quality of the 10m (1/3 arcsecond) data to be much better and not just because of the resolution, it is just more accurate and less noisy.
 
