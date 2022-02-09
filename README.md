@@ -70,9 +70,9 @@ There is no real post-processing required but you do want to clean off any exces
 
 # February 2022 Updates:
 Updated to add the following features:
-* Base elevation for path cutouts is based on the minimum elevation for that path, this allow higher paths to not require the same depth cutouts which will reduce print times.
-* Islands are in waterbodies are preserved.
-* An initial tiling method has been implimented, currently only supports 2 tiles. This will rotate 2 prints to maximize the scale and then produce 2 terrain tile files. The tiles will include a dovetail cutout to connect the tiles using an insert.
+* Base elevation for path cutouts is based on the minimum elevation for that path, this allows higher paths to not require the same depth cutouts which will reduce print times.
+* Islands in waterbodies are preserved.
+* An initial tiling method has been implimented, currently only supports 2 tiles. This will rotate 2 prints to maximize the scale and then produce 2 terrain tile files. The tiles will include a dovetail cutout to connect the tiles using dovetail inserts.
 * A compass can be inlcluded by defining the location and scale. Default scale is a 50x50mm compass.
 
 Fixes:
