@@ -6,15 +6,15 @@ An input script is needed for a given area to define your max print size, boundi
 It's not quite plug and play but you should be able to get it working for any area you want with a little work.  The great thing about OSM is that it is user maintained so you can add the trails you need and do any required clean-up on what is there.
 
 This is currently only able to pull from downloaded elevation data.  I have found that 10m data can be easily downloaded from:
-https://apps.nationalmap.gov/tnmaccess/products.html 
+https://apps.nationalmap.gov/tnmaccess/#/product
 The current script is set up to read the geotiff files using that search.
 
 Future options I would like to include are:
-* Automatic sectioning and dovetailing for terrain prints larger than printbed
+* Automatic sectioning and dovetailing for terrain prints larger than printbed (partially implimented)
 * Seprate groups of trails for different colored trails. (can be done with slicer...)
-* Integrated compass for terrain model.
+* Integrated compass for terrain model. (implimented)
 * Guidance for material changes at specific layers heights to generate contour lines on terrain model.
-* Adjust base height each path section based on minimum elevation.  This would reduce priting time and reduce the number of tall skinny path prints that are prone to failing.
+* Adjust base height each path section based on minimum elevation.  This would reduce priting time and reduce the number of tall skinny path prints that are prone to failing. (implimented)
 
 The following libraries are used:
 * overpy
@@ -24,7 +24,7 @@ The following libraries are used:
 * gpxpy
 * rasterio
 
-Blender is also required, exe loacation is assumed to be: "C:\Program Files\Blender Foundation\Blender 3.0\blender.exe
+Blender and OpenSCAD are also required.
 
 
 # USAGE:
@@ -39,7 +39,7 @@ The 30m data is easier to find but I have found the quality of the 10m (1/3 arcs
 
 See the included example for North Park (pittsburgh area): NP_STL.py, NP.gpx, tiff files downloaded by searching bounding box="-80.034,40.577,-79.974,40.6222", NED 1/3 arc-second, GeoTIFF.
 
-Final assembly can be a little tricky. You do want to clean off any fuzzies, and maybe cut really big path sections into several pieces.  Don't force them in too hard or they will get stuck partially inserted. A little sanding in the cutouts and on the side of the paths really helps the process.
+There is no real post-processing required but you do want to clean off any excessive stringing, and maybe cut really big path sections into several pieces.  Don't force them in too hard or they will get stuck partially inserted. A little sanding in the cutouts and on the side of the paths really helps the process if the paths are too tight.
 
 
 
@@ -64,7 +64,7 @@ Final assembly can be a little tricky. You do want to clean off any fuzzies, and
 * resolution - 10 or 30, for 10/30 meter resolution DEM.
 * dem_offset - offset DEM relative to OSM data to account for shifts in data
 * downsample_factor - integer factor to reduce resolution of terrain surface, needed for larger models.  1mm resolution is reasonable minimum.
-* map_only - stop after generating map to review (no boolean ops), recomend to do this first until all desired features look correct so you can iterate through changes in your input deck quicker
+* map_only - stop after generating map to review (no meshing or 3D boolean ops), recomend to do this first until all desired features look correct so you can iterate through changes in your input deck quicker
 * compass_loc - XY location for printed compass.
 * compass_size - scale factor for size of compass 50x50 default
 
