@@ -46,6 +46,7 @@ Final assembly can be a little tricky. You do want to clean off any fuzzies, and
 # INPUTS:
 
 * Boundary - polygon to define shape of terrain, input as longitude/lattitude array, or gpx file of points
+* Rect_Pt - points to bound with a rotated rectangular boundary
 * rd_include - roads names / ids to inlcude, no roads included by default.
 * trail_exclude - footpath names / ids to inlcude, all included by default.
 * waterway_include - water paths to inlcude, not inlcuding polygon water bodies
@@ -64,6 +65,23 @@ Final assembly can be a little tricky. You do want to clean off any fuzzies, and
 * dem_offset - offset DEM relative to OSM data to account for shifts in data
 * downsample_factor - integer factor to reduce resolution of terrain surface, needed for larger models.  1mm resolution is reasonable minimum.
 * map_only - stop after generating map to review (no boolean ops), recomend to do this first until all desired features look correct so you can iterate through changes in your input deck quicker
+* compass_loc - XY location for printed compass.
+* compass_size - scale factor for size of compass 50x50 default
+
+# February 2022 Updates:
+Updated to add the following features:
+* Base elevation for path cutouts is based on the minimum elevation for that path, this allow higher paths to not require the same depth cutouts which will reduce print times.
+* Islands are in waterbodies are preserved.
+* An initial tiling method has been implimented, currently only supports 2 tiles. This will rotate 2 prints to maximize the scale and then produce 2 terrain tile files. The tiles will include a dovetail cutout to connect the tiles using an insert.
+* A compass can be inlcluded by defining the location and scale. Default scale is a 50x50mm compass.
+
+Fixes:
+
+* Corrected issue with DEM overlap, this was the main cause for the terrain misalignment so the dem_offset input will hopefully not be needed.
+* More reliable terrain meshing methodology.
+* Code re-organized, blender script removed.
+
+I currently can't get reliable boolean operation using only OpenSCAD or Blender so the code requires both for now.
 
 
 # January 2022 Updates:
