@@ -24,7 +24,7 @@ The following libraries are used:
 * gpxpy
 * rasterio
 
-Blender and OpenSCAD are also required.
+Blender is also required.
 
 
 # USAGE:
@@ -41,12 +41,13 @@ See the included example for North Park (pittsburgh area): NP_STL.py, NP.gpx, ti
 
 There is no real post-processing required but you do want to clean off any excessive stringing, and maybe cut really big path sections into several pieces.  Don't force them in too hard or they will get stuck partially inserted. A little sanding in the cutouts and on the side of the paths really helps the process if the paths are too tight.
 
-
+To print multiple tiles, use the "tiles" input to set the number of tiles to use fro the terrain print. Only 2 tiles currently supported.  The code will find the angle to use for the prints that maximizes the scale.  The path inserts are not split.  Each tile is printed with a cutout for dovetail inserts to connect the tiles together, these cutouts will require supports.
 
 # INPUTS:
 
 * Boundary - polygon to define shape of terrain, input as longitude/lattitude array, or gpx file of points
 * Rect_Pt - points to bound with a rotated rectangular boundary
+* Rect_Pt_rot - points to bound with a rotated rectangular boundary
 * rd_include - roads names / ids to inlcude, no roads included by default.
 * trail_exclude - footpath names / ids to inlcude, all included by default.
 * waterway_include - water paths to inlcude, not inlcuding polygon water bodies
@@ -59,6 +60,7 @@ There is no real post-processing required but you do want to clean off any exces
 * trail_gpx - gpx file to use for trail path
 * edge_width - width of terrian border with no path cutouts
 * max_print_size - maximum print dimension.  will scale and rotate print to fit this.
+* tiles - number of tiles to use for terrain print 
 * water_drop - water ways printed slightly lower than other paths and terrain
 * load_area - overide automatic area selection
 * resolution - 10 or 30, for 10/30 meter resolution DEM.
@@ -67,22 +69,4 @@ There is no real post-processing required but you do want to clean off any exces
 * map_only - stop after generating map to review (no meshing or 3D boolean ops), recomend to do this first until all desired features look correct so you can iterate through changes in your input deck quicker
 * compass_loc - XY location for printed compass.
 * compass_size - scale factor for size of compass 50x50 default
-
-# February 2022 Updates:
-Updated to add the following features:
-* Base elevation for path cutouts is based on the minimum elevation for that path, this allows higher paths to not require the same depth cutouts which will reduce print times.
-* Islands in waterbodies are preserved.
-* An initial tiling method has been implimented, currently only supports 2 tiles. This will rotate 2 prints to maximize the scale and then produce 2 terrain tile files. The tiles will include a dovetail cutout to connect the tiles using dovetail inserts.
-* A compass can be inlcluded by defining the location and scale. Default scale is a 50x50mm compass.
-
-Fixes:
-
-* Corrected issue with DEM overlap, this was the main cause for the terrain misalignment so the dem_offset input will hopefully not be needed.
-* More reliable terrain meshing methodology.
-* Code re-organized, blender script removed.
-
-I currently can't get reliable boolean operation using only OpenSCAD or Blender so the code requires both for now.
-
-
-# January 2022 Updates:
-The function has been significantly updated to streamline the path creation and boolean ops and is more flexible.  All of the path lines are now inflated using shapely, with a lot of boolean operation done using shapely polygons rather than the 3D meshes.  The function will now process inputs with no roads, waterways or waterbodies, and footpath can be input as a gpx file in which case no footpaths are read from OSM.  Mesh boolean ops are all performed in Blender now, and with the other changes the function usually runs in a few minutes, rather than hours.  The paths now include some smoothing and the buffer function is used to elimintate sections that are too small or thin to print, although there is still some room for improvement here.
+* 
