@@ -61,6 +61,7 @@ def printScaling(dem,Boundary,print_size):
     x,y=cord2dist(x=x,y=y,corner=corner)
     print('DEM resolution: {0:.2f}x{1:.2f} mm'.format(((x.max()-x.min())/(x.shape[0]-1)*scale),(y.max()-y.min())/(y.shape[0]-1)*scale))
     edge_poly=shp.geometry.Polygon(p*scale)
+    dem.scale_factor=scale
     return scale,corner,edge_poly
 
 def printScaling_tiled(dem,Boundary,print_size,tiles):
@@ -149,14 +150,14 @@ def printScaling_tiled(dem,Boundary,print_size,tiles):
                 
     cutouts=tm.boolean.union(cutouts)
     cutouts=rotMesh(cutouts,-print_angle)
-    cutouts.export('pdsf.stl')
+
     
     edge_poly=shp.geometry.MultiPolygon(edge_poly)
     edge_poly=shp.affinity.rotate(edge_poly, -print_angle,use_radians=True,origin=[0,0])
     x,y=cord2dist(x=x,y=y,corner=corner)
     print('DEM resolution: {0:.2f}x{1:.2f} mm'.format(((x.max()-x.min())/(x.shape[0]-1)*scale),(y.max()-y.min())/(y.shape[0]-1)*scale))
-
-    return scale,corner,edge_poly,cutouts
+    dem.scale_factor=scale
+    return scale,corner,edge_poly,[cutouts]
 
 def drawPoly(ax,ply,c):
     if ply.geom_type == 'MultiPolygon':
@@ -227,12 +228,17 @@ def plotPaths(dem,sf,wb,fp,rp,ww,border,cut,cmp,e_poly):
     plt.pause(0.1)
 
 
+def LakeElev(poly,dem):
+    c=np.vstack(poly.exterior.xy).transpose();
+    c=dist2cord(c,corner=dem.corner,f=dem.scale_factor)
+    
+    z=dem.getElev(c) #perimeter elevation profile
+    z=np.sort(z)[int(0.25*z.shape[0])] #use the 25th percentile value as water level)
+    return z
 
+    
 
-
-
-
-def GenerateSTLs(Boundary=[],Rect_Pt=[],rd_include=[],trail_exclude=[],waterway_include=[],waterbody=[],trail_gpx=[],
+def GenerateSTLs(Boundary=[],Rect_Pt=[],Rect_Pt_rot=[],rd_include=[],trail_exclude=[],waterway_include=[],waterbody=[],trail_gpx=[],
                  path_width=.7,support_width=0.9,path_clearance=0.1,height_factor=2,base_height=4,top_thickness=1.5,
                  edge_width=1.5,max_print_size=[248,198],tiles=1,water_drop=0.5,load_area=[],resolution=30,
                  dem_offset=[0,0],downsample_factor=1,map_only=False,compass_loc=[],compass_size=1.0):
@@ -241,7 +247,8 @@ def GenerateSTLs(Boundary=[],Rect_Pt=[],rd_include=[],trail_exclude=[],waterway_
     INPUTS:
 
     Boundary - polygon to define shape of terrain, input as longitude/lattitude array, or gpx file of points
-    Rect_Pt - points to bound with a rotated rectangular boundary
+    Rect_Pt - points to bound with rectangular boundary
+    Rect_Pt_rot - points to bound with a rotated rectangular boundary
     rd_include - roads names / ids to inlcude, no roads included by default.
     trail_exclude - footpaths names / ids to inlcude, all included by default.
     waterway_include - water paths to inlcude, not inlcuding polygon water bodies
@@ -302,12 +309,15 @@ def GenerateSTLs(Boundary=[],Rect_Pt=[],rd_include=[],trail_exclude=[],waterway_
         Boundary=np.array(poly)
     else:
         Boundary=np.array(Boundary)
-    
-    if len(Boundary)==0 and len(Rect_Pt)>2:
-        Rect_Pt=np.flip(Rect_Pt,axis=1)
-        c=Rect_Pt.min(axis=0)
-        Rect_Pt=shp.geometry.Polygon(cord2dist(xy=Rect_Pt,corner=c))
-        Boundary=Rect_Pt.minimum_rotated_rectangle
+    if len(Boundary)==0 and len(Rect_Pt)>1:
+        Rect_Pt=np.array(Rect_Pt)
+        Rect_Pt=np.vstack((Rect_Pt.min(0),[Rect_Pt[:,0].min(),Rect_Pt[:,1].max()],Rect_Pt.max(0),[Rect_Pt[:,0].max(),Rect_Pt[:,1].min()]))
+        Boundary=Rect_Pt
+    if len(Boundary)==0 and len(Rect_Pt_rot)>2:
+        Rect_Pt_rot=np.flip(Rect_Pt_rot,axis=1)
+        c=Rect_Pt_rot.min(axis=0)
+        Rect_Pt_rot=shp.geometry.Polygon(cord2dist(xy=Rect_Pt_rot,corner=c))
+        Boundary=Rect_Pt_rot.minimum_rotated_rectangle
         Boundary=np.flip(dist2cord(xy=np.array(Boundary.exterior.xy).transpose(),corner=c),axis=1)
 
     if not any(load_area): #load area bounds polygon unless larger area is input
@@ -324,6 +334,7 @@ def GenerateSTLs(Boundary=[],Rect_Pt=[],rd_include=[],trail_exclude=[],waterway_
         scale_factor,corner,edge_poly,cutouts=printScaling_tiled(dem,Boundary,max_print_size,tiles)
     else:
         scale_factor,corner,edge_poly=printScaling(dem,Boundary,max_print_size)
+        cutouts=[]
 
     # offsets=[support_width/2,path_width/2,(path_width+path_clearance)/2]
     offsets=[(path_width+path_clearance)/2]
@@ -394,35 +405,31 @@ def GenerateSTLs(Boundary=[],Rect_Pt=[],rd_include=[],trail_exclude=[],waterway_
            cmp_cut.apply_translation([0,0,min(z)+50])
            box=tm.creation.box([200,200,200])
            cmp_cut.apply_translation([compass_loc[0], compass_loc[1],0])
+           cmp_cut=[cmp_cut]
            # cmp_cut.export('temp/compass_cut.stl')
-           
-        
+        else:
+            cmp_cut=[]
+        wb_heights2=[]
         if len(Waterbodies)>0:
             grid=np.meshgrid(dem.lat,dem.lon)
             # x=grid[1].flatten()
             # y=grid[0].flatten()
             x,y=cord2dist(x=grid[1].flatten(),y=grid[0].flatten(),corner=corner,f=scale_factor)
             pts=shp.geometry.MultiPoint(np.array([x,y]).transpose())
-            wb_heights2=[]
-            for i in range(len(Waterbodies[1])):
-
-                    
-                c=np.vstack(Waterbodies[1][i].exterior.xy).transpose();
-                
-                # idx=np.zeros(len(pts),bool)
-                # for j in range(len(pts)):
-                #     idx[j]=Waterbodies[1][i].contains(pts[j])
-                c=dist2cord(c,corner=corner,f=scale_factor)
-                
-                
-                z=dem.getElev(c) #perimeter elevation profile
-                z=np.sort(z)[int(0.25*z.shape[0])] #use the 25th percentile value as water level)
+            
+            if Waterbodies[1].geom_type == 'MultiPolygon':
+                for i in range(len(Waterbodies[1])):
+    
+                    z=LakeElev(Waterbodies[1][i],dem)
+                    wb_heights2.append((z-np.min(dem.z))*scale_factor*height_factor+1-3+base_height) #+1 to line up terrain
+                    idx=includedPoints(Waterbodies[1][i],dem,corner,scale_factor)             
+                    dem.z[idx]=z #set points to nominal elevation.     
+            else:
+                z=LakeElev(Waterbodies[1],dem)
                 wb_heights2.append((z-np.min(dem.z))*scale_factor*height_factor+1-3+base_height) #+1 to line up terrain
-
-                idx=includedPoints(Waterbodies[1][i],dem,corner,scale_factor)
-                
-                dem.z[idx]=z #set points to nominal elevation.             
-
+                idx=includedPoints(Waterbodies[1],dem,corner,scale_factor)             
+                dem.z[idx]=z #set points to nominal elevation. 
+  
         print('Meshing')
         rd_msh=meshgen2(Roads,100,dem,corner,scale_factor,height_factor,base_height,fname='temp/road')
         fp_msh=meshgen2(Footpaths,100,dem,corner,scale_factor,height_factor,base_height,fname='temp/trail')
@@ -444,35 +451,23 @@ def GenerateSTLs(Boundary=[],Rect_Pt=[],rd_include=[],trail_exclude=[],waterway_
             
         terrain_all=tMesh(dem,Boundary,scale_factor,corner,height_factor,base_height,water_drop)
         terrain_all.export('temp/terrain.stl')
-        # pmf.clean_from_file('temp/cm2.stl','temp/cutout_1.stl')
-
-        # tcut=tm.boolean.difference([terrain,cut_msh2])
-        # tcut.export('temp/tc1.stl')
+       
         
-        #terrain=tm.boolean.intersection([terrain,border_msh[0]],engine='scad')
         print('Cutting Terrain Model')
+        
+        cutlist=[]
+        i=1
+        for m in [rd_msh,fp_msh,ww_msh,wb_msh,cmp_cut,cutouts]:
+            
+            if len(m)>0:
+                cutlist.append(m[0])
+                m[0].export('temp/cc'+str(i)+'.stl')
+                i=i+1
         for i in range(len(terrain)):
-            terrain[i].export('temp/t'+str(i+1)+'.stl')
-            if len(compass_loc)==2:
-                if len(edge_poly)>0:
-                    terrain[i]=tm.boolean.difference([terrain[i],rd_msh[0],fp_msh[0],ww_msh[0],wb_msh[0],cmp_cut,cutouts],engine='scad')
-                else:
-                    terrain[i]=tm.boolean.difference([terrain[i],rd_msh[0],fp_msh[0],ww_msh[0],wb_msh[0],cmp_cut],engine='scad')
-            else:
-                if len(edge_poly)>0:
-                    terrain[i]=tm.boolean.difference([terrain[i],rd_msh[0],fp_msh[0],ww_msh[0],wb_msh[0],cutouts],engine='scad')
-                else:
-                    terrain[i]=tm.boolean.difference([terrain[i],rd_msh[0],fp_msh[0],ww_msh[0],wb_msh[0]],engine='scad')
+            terrain[i].export('temp/t-'+str(i+1)+'.stl')
+            terrain[i]=tm.boolean.difference([terrain[i]]+cutlist)
             terrain[i].export('print_files/terrain-'+str(i+1)+'.stl')
 
-        
-        # blender_loc='C:\\Program Files\\Blender Foundation\\Blender 3.0\\blender.exe'
-
-        # print('Boolean ops in Blender')
-        # t1_start = time.perf_counter()
-        # os.system('"' + blender_loc + '"' +' --background --python genPrints.py -- '+str(top_thickness)+' '+str(water_drop))
-        # print(str(time.perf_counter()-t1_start))
-        
         print('Building Inserts')
         #cut top of top section
         

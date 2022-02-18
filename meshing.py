@@ -125,10 +125,11 @@ def tMesh(dem,Boundary,scale,corner,height_factor,base_height,water_drop):
     edge=cord2dist(edge,corner=corner,f=scale)
     
     # outer edge of mesh is always a pile of shit triangles, so make a buffer to remove after meshing.
-    edge_buffer = shp.affinity.scale(shp.geometry.Polygon(edge),
+    p=shp.geometry.Polygon(edge)
+    edge_buffer = shp.affinity.scale(p,
                               xfact=(edge[:,0].max()+10*gridsize)/edge[:,0].max(),
                               yfact=(edge[:,1].max()+10*gridsize)/edge[:,1].max(),
-                              origin=tuple(edge.max(axis=0)/2))
+                              origin=p.centroid)
     edge_buffer=np.array(edge_buffer.exterior.xy).transpose()
     
     z=(z-z.min())*scale*height_factor+base_height+1 #+1 provides 1mm extra thickness for min path height
@@ -223,7 +224,7 @@ def meshgen_wb(ply,h,fname,elev):
                 msh[i].export(fname + '_' +str(i+1) +'.stl')
         else:
             msh.append(tm.creation.extrude_polygon(ply[i], h[i]))
-            msh[i].apply_translation([0,0,elev])
+            msh[i].apply_translation([0,0,elev[0]])
             if len(fname)>0:
                 msh[i].export(fname + '_' +str(i+1) +'.stl')
     return msh
@@ -274,7 +275,7 @@ def meshgen2(ply,h,dem,corner,sf,hf,base,fname=[]):
         else:
             c=np.vstack(ply[i].exterior.xy).transpose();
             c=dist2cord(c,corner=corner,f=sf)
-            z=(min(dem.getElev(c))-min(dem.z))*sf*hf+base+1-2.5
+            z=(min(dem.getElev(c))-np.min(dem.z))*sf*hf+base+1-2.5
             msh.append(tm.creation.extrude_polygon(ply[i], h))
             msh[i].apply_translation([0,0,z])
             if len(fname)>0:
@@ -320,7 +321,7 @@ def binaryOps2(Waterbodies,Footpaths,Roads,Waterways,b,pWidth,sWidth,clearance):
     #this cold probably done with loop and heiarchy
 
     if len(Roads)>0:
-        Roads=offsetLines(Roads,(pWidth+clearance)/2)[0]
+        Roads=offsetLines(Roads,(pWidth)/2)[0]
         Roads=Roads.intersection(b[0])
         Roads=bufferSmooth(Roads,[.5,-.2])
         # Roads[0]=Roads[0].simplify(pWidth/8)
@@ -340,6 +341,7 @@ def binaryOps2(Waterbodies,Footpaths,Roads,Waterways,b,pWidth,sWidth,clearance):
         Footpaths=Footpaths.difference(Roads[1]) #needs repeated to prevent bridging/overlap
         Footpaths=offsetPoly(Footpaths,[clearance/2,0,-(pWidth-sWidth)/2])#add support & cutout
         Footpaths[0]=bufferSmooth(Footpaths[0],0.01)#fixed self-intersection.
+        Footpaths[1]=bufferSmooth(Footpaths[1],0.01)#fixed self-intersection.
         Footpaths[2]=bufferSmooth(Footpaths[2],0.01)#fixed self-intersection.
         cutout=Roads[0].union(Footpaths[0])
     else: #no roads
@@ -374,7 +376,7 @@ def binaryOps2(Waterbodies,Footpaths,Roads,Waterways,b,pWidth,sWidth,clearance):
         if len(Roads)>0:    
             Waterways=Waterways.difference(Roads[1]) #needs repeated to prevent bridging/overlap
         Waterways=Waterways.difference(Footpaths[1])
-
+        Waterways=bufferSmooth(Waterways,-0.2) 
         
         Waterways=offsetPoly(Waterways,[clearance/2,0,-(pWidth-sWidth)/2])#add support & cutout
         Waterways[0]=bufferSmooth(Waterways[0],0.01)#fixed self-intersection.
@@ -384,7 +386,5 @@ def binaryOps2(Waterbodies,Footpaths,Roads,Waterways,b,pWidth,sWidth,clearance):
         cutout=bufferSmooth(cutout,.1)
         #Waterways.extend(offsetPoly(Waterways[1],(sWidth-pWidth)/2))# offset down for support
 
-  
-    
 
     return Waterbodies,Footpaths,Roads,Waterways,cutout
