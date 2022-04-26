@@ -46,14 +46,20 @@ class Dem:
         importBounds=np.zeros([4],dtype='int16')
         print('')
         print('Loading Elevation Data...')
+        
+        #import a buffer around the border, needed for meshing.
+        if res==10:
+            buffer=10/10800
+        else:
+            buffer=10/3600
         offset=np.array(offset)
         
         offset[0]=offset[0]/(np.cos(poly[:,1].min()*np.pi/180)*111111)
         offset[1]=offset[1]/111111
         offset=np.flip(offset)#flip for coordinate convention (lat, lon)
 
-        importBounds[0:2]=np.floor(np.min(poly,axis=0)-offset)
-        importBounds[2:4]=np.ceil(np.max(poly,axis=0)-offset)
+        importBounds[0:2]=np.floor(np.min(poly,axis=0)-offset-buffer)
+        importBounds[2:4]=np.ceil(np.max(poly,axis=0)-offset+buffer)
         importBounds=importBounds.astype(int)
 
         fd,x,y=getDem(importBounds,res)
@@ -110,9 +116,9 @@ class Dem:
         self.z=z
 
         #Crop to requested area
-        lon_range=range(np.argmax(self.lon > np.min(poly[:,0]))-1,np.argmax(self.lon > np.max(poly[:,0]))+1)
+        lon_range=range(np.argmax(self.lon > np.min(poly[:,0])-buffer)-1,np.argmax(self.lon > np.max(poly[:,0])+buffer)+1)
         # lon_range=(self.lon > np.min(poly[:,1])) & (self.lon < np.max(poly[:,1]))
-        lat_range=range(np.argmax(self.lat > np.min(poly[:,1]))-1,np.argmax(self.lat > np.max(poly[:,1]))+1)
+        lat_range=range(np.argmax(self.lat > np.min(poly[:,1])-buffer)-1,np.argmax(self.lat > np.max(poly[:,1])+buffer)+1)
         # lat_range=(self.lat > np.min(poly[:,0])) & (self.lat < np.max(poly[:,0]))
         self.z=self.z[lat_range,:]
         self.z=self.z[:,lon_range] #crop to range that bounds area of interest.

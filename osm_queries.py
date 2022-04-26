@@ -8,8 +8,7 @@ api = overpy.Overpass()
 
 
         
-def getFootpaths(poly,trail_exclude,trail_gpx,corner,scale_factor,offsets,base):
-    print(' ')
+def getFootpaths(result,trail_exclude,trail_include,trail_gpx,corner,scale_factor,offsets,base):
 
     if isinstance(trail_gpx,str):
         print('Loading footpath from gpx file...')
@@ -27,37 +26,44 @@ def getFootpaths(poly,trail_exclude,trail_gpx,corner,scale_factor,offsets,base):
         #TODO smoothing Kalman filter
         lines = shp.geometry.MultiLineString([cord2dist(xy=verts,corner=corner,f=scale_factor)])
     else:
-        print('Retrieving OSM footpaths...')
-
-        areaStr=str("%f, %f, %f, %f" % (np.min(poly[:,1]),np.min(poly[:,0]),np.max(poly[:,1]),np.max(poly[:,0])))
-        num_attempt=0
-        result=-1
-        while not str(result.__class__)=="<class 'overpy.Result'>" and num_attempt<=5:
-            try:
-                result = api.query("way(" + areaStr + ") [""highway""];    (._;>;); out body;")
-            except:
-                num_attempt=num_attempt+1
-                time.sleep(5)
-    
+        w_id=np.array([w.id for w in result.ways])
         inc_ways=[]
         coords=[]
-        for w in result.ways:
-            if w.tags['highway'] in ['path','footway','cycleway'] and not (w.id in trail_exclude) and not ("name" in w.tags and w.tags["name"] in trail_exclude):
-                inc_ways.append(w)
-                c=np.array([[float(n.lon) for n in w.nodes],[float(n.lat) for n in w.nodes]]).transpose()
-                c=cord2dist(xy=c,corner=corner,f=scale_factor)
-                coords.append(c)
+        if len(trail_include)>0:
+            for w in result.ways:
 
+                if (("highway" in w.tags) and (w.tags['highway'] in ['path','footway','cycleway'])) and ((w.id in trail_include) or ("name" in w.tags and w.tags["name"] in trail_include)):
+                    inc_ways.append(w.id)
+
+            for r in result.relations:
+                #find by OSM id or name
+                if ("name" in r.tags and r.tags['name'] in trail_include) or r.id in trail_include:
+                    #once we find a relation, extract and merge all the ways
+                    for m in r.members:
+                        w=result.ways[np.argmax(np.isin(w_id,m.ref))]
+                        # if m._type_value == 'way':
+                        if (("highway" in w.tags) and (w.tags['highway'] in ['path','footway','cycleway'])) and w.id not in inc_ways:
+                            # outer.append(result.ways[idx])
+                            inc_ways.append(w.id)
+            
+        else:
+            for w in result.ways:
+                if  ('highway' in w.tags and w.tags['highway'] in ['path','footway','cycleway']) and not (w.id in trail_exclude) and not ("name" in w.tags and w.tags["name"] in trail_exclude):
+                    inc_ways.append(w.id)
+
+        for num in inc_ways:
+            w=result.ways[np.argmax(np.isin(w_id,num))]
+            c=np.array([[float(n.lon) for n in w.nodes],[float(n.lat) for n in w.nodes]]).transpose()
+            c=cord2dist(xy=c,corner=corner,f=scale_factor)
+            coords.append(c)
         lines = shp.geometry.MultiLineString(coords)
     # p=offsetLines(lines,offsets)
     # return p
     return lines
 
-def getRoads(poly,roads,corner,scale_factor,offsets,base):
+def getRoads(result,roads,corner,scale_factor,offsets,base):
     if len(roads)==0:
         return []
-    print(' ')
-    print('Retrieving OSM roads...')
 
     rd_names=[]
     if any(roads):
@@ -65,29 +71,30 @@ def getRoads(poly,roads,corner,scale_factor,offsets,base):
             if isinstance(roads[i],str):
                 rd_names.append(roads.pop(i))
 
-    areaStr=str("%f, %f, %f, %f" % (np.min(poly[:,1]),np.min(poly[:,0]),np.max(poly[:,1]),np.max(poly[:,0])))
-    num_attempt=0
-    result=-1
-    while not str(result.__class__)=="<class 'overpy.Result'>" and num_attempt<=5:
-        try:
-            #roads and railways
-            #result = api.query("way(" + areaStr + ") [""highway""];   (._;>;); out body;")
-            # result = api.query("way(" + areaStr + ") [""railway""];   (._;>;); out body;")
-            result = api.query("(way(" + areaStr + ") [""highway""];way(" + areaStr + ") [""railway""];);   (._;>;); out body;")
-        except:
-            num_attempt=num_attempt+1
-            time.sleep(5)
-
+    w_id=np.array([w.id for w in result.ways])
     inc_ways=[]
     coords=[]
     for w in result.ways:
-        if w.id in roads or ("name" in w.tags and w.tags["name"] in rd_names):
-            if ("name" in w.tags and w.tags["name"]=="P&W Subdivision"):
-                x=1
-            inc_ways.append(w)
-            c=np.array([[float(n.lon) for n in w.nodes],[float(n.lat) for n in w.nodes]]).transpose()
-            c=cord2dist(xy=c,corner=corner,f=scale_factor)
-            coords.append(c)
+        if ("highway" in w.tags and (w.tags['highway'] not in ['path','footway','cycleway'])) and (w.id in roads or ("name" in w.tags and w.tags["name"] in rd_names)):
+            inc_ways.append(w.id)
+        if "railway" in w.tags and (w.id in roads or ("name" in w.tags and w.tags["name"] in rd_names)):
+            inc_ways.append(w.id)
+            
+    for r in result.relations:
+        #find by OSM id or name
+        if ("name" in r.tags and r.tags['name'] in rd_names) or r.id in roads:
+            #once we find a relation, extract and merge all the ways
+            for m in r.members:
+                    w=result.ways[np.argmax(np.isin(w_id,m.ref))]
+                    # if m._type_value == 'way':
+                    if (("highway" in w.tags) and (w.tags['highway'] not in ['path','footway','cycleway'])) and w.id not in inc_ways:
+                        # outer.append(result.ways[idx])
+                        inc_ways.append(w.id)
+    for num in inc_ways:
+        w=result.ways[np.argmax(np.isin(w_id,num))]
+        c=np.array([[float(n.lon) for n in w.nodes],[float(n.lat) for n in w.nodes]]).transpose()
+        c=cord2dist(xy=c,corner=corner,f=scale_factor)
+        coords.append(c)
     lines = shp.geometry.MultiLineString(coords)
     # if any(inc_ways):
     #     return offsetLines(lines,offsets)
@@ -100,22 +107,9 @@ def getRoads(poly,roads,corner,scale_factor,offsets,base):
 
 
 
-def getWaterways(poly,waterways,corner,scale_factor,offsets,base,map_only):
+def getWaterways(result,waterways,corner,scale_factor,offsets,base,map_only):
     if len(waterways)==0:
         return []
-    print(' ')
-    print('Retrieving OSM waterways...')
-
-    areaStr=str("%f, %f, %f, %f" % (np.min(poly[:,1]),np.min(poly[:,0]),np.max(poly[:,1]),np.max(poly[:,0])))
-
-    num_attempt=0
-    result=-1
-    while not str(result.__class__)=="<class 'overpy.Result'>" and num_attempt<=5:
-        try:
-            result = api.query("way(" + areaStr + ") [""waterway""];    (._;>;); out body;")
-        except:
-            num_attempt=num_attempt+1
-            time.sleep(5)
     inc_ways=[]
     coords=[]
     for w in result.ways:
@@ -138,54 +132,18 @@ def flip(x, y,z):
     """Flips the x and y coordinate values"""
     return y, x, z
 
-
-def findConnLine(l1,lines):
-    endPoint=np.array(l1.xy)[:,-1]
-    for l in lines:
-        xy=np.array(l.xy)
-        if np.all(abs(xy[:,0]-endPoint)<0.1):
-            l2=lines.pop(0)
-            c1=np.array([tuple(coord) for coord in list(l1.coords)])
-            c2=np.array([tuple(coord) for coord in list(l2.coords)])
-            l1=shp.geometry.LineString(np.vstack((c1,c2[1:,:])))
-            return l1,lines,True
-        if np.all(abs(xy[:,-1]-endPoint)<0.1):
-            l2=lines.pop(0)
-            c1=np.array([tuple(coord) for coord in list(l1.coords)])
-            c2=np.array([tuple(coord) for coord in list(l2.coords)])
-            l1=shp.geometry.LineString(np.vstack((c1,c2[:-1,:])))
-            return l1,lines,True
-    return l1,lines,False
         
 
-def getWaterbodies(poly,bodies,corner,scale_factor,clearance,base,height_factor,dem):
+def getWaterbodies(result,bodies,corner,scale_factor,clearance,base,height_factor,dem):
     if len(bodies)==0:
         return []
     Thickness=3
-    
-    print(' ')
-    print('Retrieving OSM waterbodies...')
-    areaStr=str("%f, %f, %f, %f" % (np.min(poly[:,1]),np.min(poly[:,0]),np.max(poly[:,1]),np.max(poly[:,0])))
-    wb=[]
-
-
-    # Lakes can be either relations or individual ways
-    num_attempt=0
-    result=-1
-    while not str(result.__class__)=="<class 'overpy.Result'>" and num_attempt<=5:
-        try:
-            result = api.query("(rel(" + areaStr + ") [""water""];way(" + areaStr + ") [""water""];);   (._;>;); out body;")
-            #result = api.query("rel(" + areaStr + ") [""water""];    (._;>;); out body;")
-        except:
-            num_attempt=num_attempt+1
-            time.sleep(5)
-
 
     w_id=np.array([w.id for w in result.ways])
     polys=[]
     for r in result.relations:
         #find by OSM id or name
-        if r.tags['name'] in bodies or r.id in bodies:
+        if ("name" in r.tags and r.tags['name'] in bodies) or r.id in bodies:
             #once we find a relation, extract and merge all the ways
             outer=[]
             inner=[]
@@ -196,17 +154,17 @@ def getWaterbodies(poly,bodies,corner,scale_factor,clearance,base,height_factor,
                     outer.append(result.ways[idx])
                 if m._type_value == 'way' and m.role == 'inner':
                     inner.append(result.ways[idx])
-        holes=[]
-        p=[]
-        for w in inner:
-            c=np.array([[float(n.lon) for n in w.nodes],[float(n.lat) for n in w.nodes]]).T
-            c=cord2dist(xy=c,corner=corner,f=scale_factor)
-            holes.append(c)
-        for w in outer:
-            p.append(np.array([[float(n.lon) for n in w.nodes],[float(n.lat) for n in w.nodes]]).T)
-        p=np.vstack(p)
-        p=cord2dist(xy=p,corner=corner,f=scale_factor)
-        polys.append(shp.geometry.Polygon(p,holes=holes))
+            holes=[]
+            p=[]
+            for w in inner:
+                c=np.array([[float(n.lon) for n in w.nodes],[float(n.lat) for n in w.nodes]]).T
+                c=cord2dist(xy=c,corner=corner,f=scale_factor)
+                holes.append(c)
+            for w in outer:
+                p.append(np.array([[float(n.lon) for n in w.nodes],[float(n.lat) for n in w.nodes]]).T)
+            p=np.vstack(p)
+            p=cord2dist(xy=p,corner=corner,f=scale_factor)
+            polys.append(shp.geometry.Polygon(p,holes=holes))
        
     #some lakes are single ways
     for w in result.ways:

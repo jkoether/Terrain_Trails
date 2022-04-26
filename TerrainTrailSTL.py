@@ -25,13 +25,14 @@ import shapely as shp
 import descartes as desc
 
 import matplotlib.pyplot as plt
-
+import pyacvd as cvd
 
 from dem_funcs import Dem 
 from osm_queries import *
 from meshing import *
 from cord_funcs import *
-
+from line_splitter import *
+from tiling import printScaling_tiled
 
 
 
@@ -64,100 +65,7 @@ def printScaling(dem,Boundary,print_size):
     dem.scale_factor=scale
     return scale,corner,edge_poly
 
-def printScaling_tiled(dem,Boundary,print_size,tiles):
-    #determine largest size that can be printed with the given number of tiles (only 2 supported for now.)
-    dovetail_gap=-.1 #negative for interference
-    dovetail_height=7
-    dovetail_spacing=100 #set to zero for just one per edge
-    
-    cutout=tm.load('dovetail_cutout.stl')
-    t=np.eye(4)
-    t[2, 2] *= (dovetail_height+2)/10
-    cutout.apply_transform(t)
-    
-    
 
-    x=dem.lon
-    y=dem.lat
-    
-    corner=np.stack((np.min(x),np.min(y)))
-
-    p=cord2dist(Boundary,corner=corner)
-
-    print_angle=np.linspace(0,np.pi,181) 
-    scale=np.zeros(print_angle.shape[0])
-    corners=np.zeros([2,2,print_angle.shape[0]])
-    
-    #find the rotation that allows for the largest scale print
-    for i in range(print_angle.shape[0]):
-        #rotated boundary poly:
-        rp=shp.affinity.rotate(shp.geometry.Polygon(p), print_angle[i],use_radians=True,origin=[0,0])
-        scale[i]=print_size[1]*2/(rp.bounds[3]-rp.bounds[1])
-        #split on line parrallel to x-axis, find scaling assuming y-axis length is limiting 
-        mid=(rp.bounds[3]+rp.bounds[1])/2
-        split_line=shp.geometry.LineString([[rp.bounds[0]-1,mid],[rp.bounds[2]+1,mid]])
-        rp=shp.ops.split(rp, split_line)
-        r=np.array([p.bounds for p in rp])
-        idx=np.argsort(r[:,1])
-        r=r[idx.tolist()]
-        max_width=(r[:,2]-r[:,0]).max()
-        
-        #check if print is to large in x-direction, allowing for offsets between rows, reduce scale if needed.
-        if max_width*scale[i]>print_size[0]: 
-            scale[i]=print_size[0]/max_width 
-
-        corners[0,0,i]=r[0,0]
-        corners[0,1,i]=r[1,1]-print_size[1]/scale[i]
-        corners[1,:,i]=r[1,0:2]
-    idx=np.argmax(scale)
-    print_angle=print_angle[idx]
-    
-    print('print angle: {0:.2f} deg'.format(print_angle*180/np.pi))
-    
-    scale=scale[idx] #use angle that allows the largest print.  model is not rotated, optimal angle is output and part will need rotated in slicer.
-    corners=corners[:,:,idx]*scale
-    
-
-    
-    #rotated boundary polygon, used to place inserts
-    rp=shp.affinity.rotate(shp.geometry.Polygon(p*scale), print_angle,use_radians=True,origin=[0,0])
-    
-    
-    edge_poly=[]
-    pts=np.array([[0, 0],[0,print_size[1]],[print_size[0],print_size[1]],[print_size[0],0]])
-    
-
-    cutouts=[]
-    
-    #layout tile edges and inserts in rotated space.
-    for i in range(corners.shape[0]):
-        edge_poly.append(shp.geometry.Polygon(corners[i,:]+pts))
-        
-        #build complete collection of insert cutouts that can be subtracted from each tile to make required cutouts.
-        if i>0:
-            split_line=shp.geometry.LineString([[rp.bounds[0]-1,corners[i,1]],[rp.bounds[2]+1,corners[i,1]]])
-            sp=shp.ops.split(rp, split_line)[0]
-            seam=np.vstack(sp.exterior.xy)
-            seam=seam[(0,abs(seam[1,:]-corners[i,1])<0.5)] #find points close to seam between tiles
-            
-            center=(seam.max()+seam.min())/2
-            #-2 in Z here to prevent colinear faces during boolean ops.
-            cutouts_loc=[[-dovetail_spacing/2+center,corners[i,1],-2],[dovetail_spacing/2+center,corners[i,1],-2]]
-            for c in cutouts_loc:
-                new_cutout=deepcopy(cutout)
-                new_cutout.apply_translation(c)
-                cutouts.append(new_cutout)
-                
-    cutouts=tm.boolean.union(cutouts)
-    cutouts=rotMesh(cutouts,-print_angle)
-
-    
-    edge_poly=shp.geometry.MultiPolygon(edge_poly)
-    edge_poly=shp.affinity.rotate(edge_poly, -print_angle,use_radians=True,origin=[0,0])
-    x,y=cord2dist(x=x,y=y,corner=corner)
-    print('DEM resolution: {0:.2f}x{1:.2f} mm'.format(((x.max()-x.min())/(x.shape[0]-1)*scale),(y.max()-y.min())/(y.shape[0]-1)*scale))
-    dem.scale_factor=scale
-    return scale,corner,edge_poly,[cutouts]
 
 def drawPoly(ax,ply,c):
     if ply.geom_type == 'MultiPolygon':
@@ -238,10 +146,10 @@ def LakeElev(poly,dem):
 
     
 
-def GenerateSTLs(Boundary=[],Rect_Pt=[],Rect_Pt_rot=[],rd_include=[],trail_exclude=[],waterway_include=[],waterbody=[],trail_gpx=[],
-                 path_width=.7,support_width=0.9,path_clearance=0.1,height_factor=2,base_height=4,top_thickness=1.5,
-                 edge_width=1.5,max_print_size=[248,198],tiles=1,water_drop=0.5,load_area=[],resolution=30,
-                 dem_offset=[0,0],downsample_factor=1,map_only=False,compass_loc=[],compass_size=1.0):
+def GenerateSTLs(Boundary=[],Rect_Pt=[],Rect_Pt_rot=[],rd_include=[],trail_exclude=[],trail_include=[],waterway_include=[],waterbody=[],trail_gpx=[],
+                 path_width=.7,support_width=0.9,path_clearance=0.1,height_factor=2,base_height=4,top_thickness=1.5,min_area=0.5,
+                 edge_width=1.5,max_print_size=[248,198],tiles=1,dovetails=True,dovetail_height=6,water_drop=0.5,load_area=[],resolution=30,
+                 dem_offset=[0,0],downsample_factor=1,map_only=False,compass_loc=[],compass_size=1.0,split_length=0):
     """
 
     INPUTS:
@@ -251,26 +159,31 @@ def GenerateSTLs(Boundary=[],Rect_Pt=[],Rect_Pt_rot=[],rd_include=[],trail_exclu
     Rect_Pt_rot - points to bound with a rotated rectangular boundary
     rd_include - roads names / ids to inlcude, no roads included by default.
     trail_exclude - footpaths names / ids to inlcude, all included by default.
+    trail_include - footpaths names / ids to include. If this is not empty, all other trails are exluded and "trail_exclude" is ignored
     waterway_include - water paths to inlcude, not inlcuding polygon water bodies
-    waterway_include - water areas to include (lakes), current set to print at one level, just below surrounding land.  Will not work well for rivers.
+    waterway_include - water areas to include (lakes), current set to print at one level, just below surrounding land.  Will not work well for rivers that are not flat.
     trail_gpx - gpx file to use for trail path
     path_width - path (road, footpaths and waterway) print top width, 3 total passes works best.
     support_width - width of base (one pass less than top)
     path_clearance - clearance between path prints and cutouts.
     height_factor - exaggeration factor for elevation. 1.0 makes on same scale as horizontal dimensions.
-    base_height - minium print thickness
+    base_height - minium print thickness, should be > 9 if tiling is used.
+    top_thickness - vertical thickness of wider top section of roads, trails and waterways.
+    min_area - min area for any printed shape
     edge_width - width of terrian border with no path cutouts
     max_print_size - maximum print dimension.  will scale and rotate print to fit this.
     tiles - number of tiles to use for terrain print 
+    dovetails - boolean to set if tiles are joined with dovetail inserts
+    dovetail_height - Thickness of generated dovetail inserts and cutouts, 20 max
     water_drop - water ways printed slightly lower than other paths and terrain
     load_area - overide automatic area selection
-    top_thickness - vertical thickness of wider top section of roads, trails and waterways.
     resolution - 10 or 30, for 10/30 meter resolution DEM.
     dem_offset - offset DEM relative to OSM data to account for shifts in data.
     downsample_factor, integer factor to reduce resolution of terrain surface, needed for larger models.  1mm resolution is reasonable minimum.
     map_only - stop after generating map to review (no boolean ops), recomend to do this first until all desired features look corrects oi it doesn't get hung up on boolean operations for hours.
     compass_loc - XY location for printed compass.
     compass_size - scale factor for size of compass (Letter N might reqiure 0.25 nozzle)
+    split_length - split roads into different sections based on total length.  This will reduce the height of path section which will also simplify the terrain model, assembly is also easier.
     """
     if not os.path.isdir('print_files/'):
         os.mkdir('print_files/')
@@ -331,7 +244,9 @@ def GenerateSTLs(Boundary=[],Rect_Pt=[],Rect_Pt_rot=[],rd_include=[],trail_exclu
 
     #find the largest print that fits (rotated) within print size a return scale factor and x/y=0 corner of print in coords'
     if tiles>1:
-        scale_factor,corner,edge_poly,cutouts=printScaling_tiled(dem,Boundary,max_print_size,tiles)
+        if not dovetails:
+            dovetail_height=0
+        scale_factor,corner,edge_poly,cutouts=printScaling_tiled(dem,Boundary,max_print_size,tiles,dovetail_height)
     else:
         scale_factor,corner,edge_poly=printScaling(dem,Boundary,max_print_size)
         cutouts=[]
@@ -339,20 +254,49 @@ def GenerateSTLs(Boundary=[],Rect_Pt=[],Rect_Pt_rot=[],rd_include=[],trail_exclu
     # offsets=[support_width/2,path_width/2,(path_width+path_clearance)/2]
     offsets=[(path_width+path_clearance)/2]
     
-    Footpaths=getFootpaths(Boundary,trail_exclude,trail_gpx,corner,scale_factor,offsets,base_height)
     
-    Roads=getRoads(Boundary,rd_include,corner,scale_factor,offsets,base_height)
+    print('Processing OSM results')
+    # start = time.time()
+
     
-    Waterways=getWaterways(Boundary,waterway_include,corner,scale_factor,offsets,base_height,map_only)
-    Waterbodies=getWaterbodies(Boundary,waterbody,corner,scale_factor,path_clearance,base_height,height_factor,dem)
+    areaStr=str("%f, %f, %f, %f" % (np.min(Boundary[:,1]),np.min(Boundary[:,0]),np.max(Boundary[:,1]),np.max(Boundary[:,0])))
+    num_attempt=0
+    OSMresults=-1
+    while not str(OSMresults.__class__)=="<class 'overpy.Result'>" and num_attempt<=5:
+        try:
+            #roads and railways
+            #result = api.query("way(" + areaStr + ") [""highway""];   (._;>;); out body;")
+            # result = api.query("way(" + areaStr + ") [""railway""];   (._;>;); out body;")
+            OSMresults = api.query("(rel(" + areaStr + ")[""route""];way(" + areaStr + ") [""highway""];way(" + areaStr + ") [""railway""];way(" + areaStr + ") [""waterway""];rel(" + areaStr + ") [""water""];way(" + areaStr + ") [""water""];);   (._;>;); out body;")
+        except:
+            num_attempt=num_attempt+1
+            print('|')
+            time.sleep(5)
+    # print(time.time() - start)
+    # start = time.time()
+
+    Footpaths=getFootpaths(OSMresults,trail_exclude,trail_include,trail_gpx,corner,scale_factor,offsets,base_height)
+    
+    Roads=getRoads(OSMresults,rd_include,corner,scale_factor,offsets,base_height)
+    
+    Waterways=getWaterways(OSMresults,waterway_include,corner,scale_factor,offsets,base_height,map_only)
+    Waterbodies=getWaterbodies(OSMresults,waterbody,corner,scale_factor,path_clearance,base_height,height_factor,dem)
     
     Boundary=shp.geometry.Polygon(cord2dist(xy=Boundary,corner=corner,f=scale_factor))
 
     borders=offsetPoly(Boundary,[-edge_width-path_clearance,-edge_width-path_clearance/2,-edge_width,0])
-    
+    # print(time.time() - start)
     print('2D Boolean Operations')
-    Waterbodies,Footpaths,Roads,Waterways,Cutout=binaryOps2(Waterbodies,Footpaths,Roads,Waterways,borders,path_width,support_width,path_clearance)
     
+    # if split_length>0:
+    #     split_lines=splitPath(Roads,split_length)
+    # else:
+    #     split_lines=[]
+        
+        
+        # Cutout,Waterbodies,Footpaths,Roads,Waterways=binaryOps2(Waterbodies,Footpaths,Roads,Waterways,borders,path_width,support_width,path_clearance,min_area)
+    Roads,Footpaths,Waterbodies,Waterways,Cutout=binaryOps3([Roads,Footpaths,Waterbodies,Waterways],borders,path_width,support_width,path_clearance,min_area)
+
     if len(compass_loc)==2: #redundant with other compass section
         print('generating compass')
         cmp=tm.load("compass.stl")
@@ -391,7 +335,7 @@ def GenerateSTLs(Boundary=[],Rect_Pt=[],Rect_Pt_rot=[],rd_include=[],trail_exclu
            
            #Cut off bottom to just below min elevation
            box=tm.creation.box([200,200,200])
-           box.apply_translation([compass_loc[0], compass_loc[1],min(z)-2-100])
+           box.apply_translation([compass_loc[0], compass_loc[1],min(z)-2-1-100])
            
            cmp.apply_translation([0,0,max(z)])
            cmp.export('temp/c1.stl')
@@ -402,7 +346,7 @@ def GenerateSTLs(Boundary=[],Rect_Pt=[],Rect_Pt_rot=[],rd_include=[],trail_exclu
            
            cmp_cut=tm.load("compass_cutout.stl")
            cmp_cut.apply_transform(t)
-           cmp_cut.apply_translation([0,0,min(z)+50])
+           cmp_cut.apply_translation([0,0,min(z)+50-2])
            box=tm.creation.box([200,200,200])
            cmp_cut.apply_translation([compass_loc[0], compass_loc[1],0])
            cmp_cut=[cmp_cut]
@@ -431,9 +375,9 @@ def GenerateSTLs(Boundary=[],Rect_Pt=[],Rect_Pt_rot=[],rd_include=[],trail_exclu
                 dem.z[idx]=z #set points to nominal elevation. 
   
         print('Meshing')
-        rd_msh=meshgen2(Roads,100,dem,corner,scale_factor,height_factor,base_height,fname='temp/road')
-        fp_msh=meshgen2(Footpaths,100,dem,corner,scale_factor,height_factor,base_height,fname='temp/trail')
-        ww_msh=meshgen2(Waterways,100,dem,corner,scale_factor,height_factor,base_height,fname='temp/water')
+        rd_msh=meshgen2(Roads,dem,corner,scale_factor,height_factor,base_height,fname='temp/road')
+        fp_msh=meshgen2(Footpaths,dem,corner,scale_factor,height_factor,base_height,fname='temp/trail')
+        ww_msh=meshgen2(Waterways,dem,corner,scale_factor,height_factor,base_height,fname='temp/water')
         wb_msh=meshgen_wb(Waterbodies,[20,1.5,3],'temp/waterbodies',wb_heights2)
         #cut_msh=meshgen(Cutout,100,corner,scale_factor)
         #border_msh=meshgen(borders[3],100,'temp/border',elev=-1)#shift down 1mm to avoid coplaner faces]
@@ -443,29 +387,43 @@ def GenerateSTLs(Boundary=[],Rect_Pt=[],Rect_Pt_rot=[],rd_include=[],trail_exclu
             terrain=[]
             for e in edge_poly:
                 b=e.intersection(Boundary)
-                t=tMesh(dem,b,scale_factor,corner,height_factor,base_height,water_drop)
-                terrain.append(t)
+                if b.geom_type!='GeometryCollection':
+                    t=tMesh(dem,b,scale_factor,corner,height_factor,base_height,water_drop)
+                    terrain.append(t)
                 # terrain.append(tm.boolean.difference([t,cutouts]))
         else:
             terrain=[tMesh(dem,Boundary,scale_factor,corner,height_factor,base_height,water_drop)]
             
         terrain_all=tMesh(dem,Boundary,scale_factor,corner,height_factor,base_height,water_drop)
-        terrain_all.export('temp/terrain.stl')
+        terrain_all.export('print_files/terrain.stl')
        
         
         print('Cutting Terrain Model')
         
         cutlist=[]
         i=1
-        for m in [rd_msh,fp_msh,ww_msh,wb_msh,cmp_cut,cutouts]:
+        
+        #remeshing
+        # fp_msh[0]=tm.load("cc6.stl")
+        
+        for m in [cmp_cut,ww_msh,wb_msh,rd_msh,fp_msh,cutouts]:
+        # for m in [wb_msh,ww_msh,rd_msh,cmp_cut,fp_msh]:
             
             if len(m)>0:
                 cutlist.append(m[0])
                 m[0].export('temp/cc'+str(i)+'.stl')
+                # print(m[0].is_watertight)
                 i=i+1
         for i in range(len(terrain)):
             terrain[i].export('temp/t-'+str(i+1)+'.stl')
-            terrain[i]=tm.boolean.difference([terrain[i]]+cutlist)
+            # tx=terrain[i]
+            # for j in range(len(cutlist)):
+            #     tx=tm.boolean.difference([tx,cutlist[j]])
+            #     print(tx.is_watertight)
+            #     if not tx.is_watertight:
+            #         tx.fill_holes()
+            #         print(tx.is_watertight)
+            terrain[i]=tm.boolean.difference([terrain[i]]+cutlist,engine='scad')
             terrain[i].export('print_files/terrain-'+str(i+1)+'.stl')
 
         print('Building Inserts')
